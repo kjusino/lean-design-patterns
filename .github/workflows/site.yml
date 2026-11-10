@@ -1,0 +1,64 @@
+name: Verify and deploy
+
+on:
+  push:
+    branches: [develop]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  verify-lean:
+    name: Check every proof
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install elan
+        run: |
+          curl -sSfL https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh | sh -s -- -y --default-toolchain none
+          echo "$HOME/.elan/bin" >> "$GITHUB_PATH"
+      - name: Build all patterns (warnings, including sorry, fail the build)
+        working-directory: lean
+        run: lake build --wfail
+      - name: Check each file stands alone (no imports, pasteable into the playground)
+        working-directory: lean
+        run: |
+          if grep -l '^import' Patterns/*.lean; then
+            echo "Pattern files must not import anything."; exit 1
+          fi
+
+  build-site:
+    name: Build site
+    needs: verify-lean
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+  deploy:
+    name: Deploy to GitHub Pages
+    if: github.event_name != 'pull_request'
+    needs: build-site
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

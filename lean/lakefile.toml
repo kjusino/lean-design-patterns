@@ -1,0 +1,5 @@
+name = "patterns"
+defaultTargets = ["Patterns"]
+
+[[lean_lib]]
+name = "Patterns"
