@@ -40,11 +40,17 @@ export default function App() {
   const [filter, setFilter] = useState('')
   const menuButton = useRef<HTMLButtonElement>(null)
   const filterInput = useRef<HTMLInputElement>(null)
+  const topbar = useRef<HTMLElement>(null)
+  const [menuTop, setMenuTop] = useState<number | undefined>(undefined)
 
   // Mobile menu: focus the filter when it opens; Escape closes it and
   // returns focus to the button that opened it.
   useEffect(() => {
     if (!menuOpen) return
+    // Start the overlay just below the header (the banner above it can wrap
+    // to several lines on phones), and stop the page scrolling behind it.
+    setMenuTop(topbar.current?.getBoundingClientRect().bottom)
+    document.body.style.overflow = 'hidden'
     filterInput.current?.focus()
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
@@ -53,7 +59,10 @@ export default function App() {
       }
     }
     window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
+    return () => {
+      window.removeEventListener('keydown', onKey)
+      document.body.style.overflow = ''
+    }
   }, [menuOpen])
 
   useEffect(() => {
@@ -84,7 +93,12 @@ export default function App() {
       <a className="skip" href="#main">
         Skip to content
       </a>
-      <header className="topbar">
+      <p className="dev-banner" role="note">
+        <strong>Development in progress.</strong> The author has not reviewed this content yet.
+        The Lean proofs compile and are checked on every change, but the explanations and industry
+        cases may contain errors.
+      </p>
+      <header className="topbar" ref={topbar}>
         <a className="brand" href={href('/')}>
           <span className="brand-mark" aria-hidden="true">⊢</span>
           Lean Design Patterns
@@ -101,7 +115,12 @@ export default function App() {
         </button>
       </header>
 
-      <nav id="catalog" className={`catalog${menuOpen ? ' open' : ''}`} aria-label="Pattern catalog">
+      <nav
+        id="catalog"
+        className={`catalog${menuOpen ? ' open' : ''}`}
+        style={menuOpen && menuTop !== undefined ? { top: menuTop } : undefined}
+        aria-label="Pattern catalog"
+      >
         <label className="filter">
           <span className="visually-hidden">Filter patterns</span>
           <input

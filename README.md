@@ -4,6 +4,8 @@ The 23 Gang of Four design patterns, translated into Lean 4. Each pattern is gro
 
 **Site:** https://kjusino.github.io/lean-design-patterns/
 
+> **Development in progress.** The author has not reviewed this content yet. The Lean proofs compile and are checked on every change, but the explanations and industry cases may contain errors.
+
 ## What's here
 
 | Path | What it is |
