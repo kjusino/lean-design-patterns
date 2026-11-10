@@ -33,11 +33,33 @@ const searchText = Object.fromEntries(
   ]),
 )
 
+const BANNER_KEY = 'ldp-dev-banner-dismissed'
+
+// Remember a dismissed banner in this browser. Storage can be unavailable
+// (private windows, blocked cookies), so every access is guarded.
+function bannerDismissed(): boolean {
+  try {
+    return localStorage.getItem(BANNER_KEY) === '1'
+  } catch {
+    return false
+  }
+}
+
 export default function App() {
   const route = useRoute()
   const [path, anchor] = route.split('#')
   const [menuOpen, setMenuOpen] = useState(false)
   const [filter, setFilter] = useState('')
+  const [showBanner, setShowBanner] = useState(() => !bannerDismissed())
+  const dismissBanner = () => {
+    setShowBanner(false)
+    try {
+      localStorage.setItem(BANNER_KEY, '1')
+    } catch {
+      // Not remembered across visits, but still hidden for this one.
+    }
+    document.getElementById('main')?.focus()
+  }
   const menuButton = useRef<HTMLButtonElement>(null)
   const filterInput = useRef<HTMLInputElement>(null)
   const topbar = useRef<HTMLElement>(null)
@@ -93,11 +115,18 @@ export default function App() {
       <a className="skip" href="#main">
         Skip to content
       </a>
-      <p className="dev-banner" role="note">
-        <strong>Development in progress.</strong> The author has not reviewed this content yet.
-        The Lean proofs compile and are checked on every change, but the explanations and industry
-        cases may contain errors.
-      </p>
+      {showBanner && (
+        <div className="dev-banner" role="note">
+          <p>
+            <strong>Development in progress.</strong> The author has not reviewed this content yet.
+            The Lean proofs compile and are checked on every change, but the explanations and
+            industry cases may contain errors.
+          </p>
+          <button type="button" className="dev-banner-close" aria-label="Dismiss this notice" onClick={dismissBanner}>
+            ×
+          </button>
+        </div>
+      )}
       <header className="topbar" ref={topbar}>
         <a className="brand" href={href('/')}>
           <span className="brand-mark" aria-hidden="true">⊢</span>

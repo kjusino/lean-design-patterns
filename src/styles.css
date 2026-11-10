@@ -260,16 +260,43 @@ code {
 /* Shown site-wide until the author has reviewed the content. */
 .dev-banner {
   grid-area: banner;
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
   margin: 0;
-  padding: 0.55rem 1.5rem;
+  padding: 0.55rem 0.75rem 0.55rem 1.5rem;
   background: var(--different-bg);
   color: var(--ink);
   border-bottom: 1px solid var(--different);
   font-size: var(--step--1);
   line-height: 1.45;
 }
+.dev-banner p {
+  margin: 0;
+  flex: 1;
+}
 .dev-banner strong {
   color: var(--different);
+}
+.dev-banner-close {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 2rem;
+  height: 2rem;
+  margin: -0.25rem 0;
+  padding: 0;
+  font: inherit;
+  font-size: 1.35rem;
+  line-height: 1;
+  color: var(--ink);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  cursor: pointer;
+}
+.dev-banner-close:hover {
+  border-color: var(--different);
 }
 
 /* ───────── Verdicts ───────── */
