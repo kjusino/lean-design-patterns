@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { metapatterns } from '../data/metapatterns'
 import { categories, patterns, verdictBlurb, verdictLabel, type Verdict } from '../data/patterns'
 import { href } from '../router'
@@ -6,6 +7,9 @@ import { Turnstile, VerdictDot } from '../components/Bits'
 const verdicts: Verdict[] = ['feature', 'different', 'dissolves']
 
 export function Home() {
+  const [only, setOnly] = useState<Verdict | null>(null)
+  const shown = only ? patterns.filter((p) => p.verdict === only) : patterns
+
   return (
     <div className="home">
       <header className="hero">
@@ -17,13 +21,29 @@ export function Home() {
           production system or incident, shows what the pattern becomes in functional code,
           and proves the property that matters, with a spec short enough to review in a minute.
         </p>
+        <p className="start-here">
+          New here? Read <a href={href('/patterns/strategy')}>Strategy</a>, then{' '}
+          <a href={href('/patterns/composite')}>Composite</a>, then{' '}
+          <a href={href('/patterns/command')}>Command</a>. Between them they use most of the
+          seven ideas the catalog is built on. New to Lean itself?{' '}
+          <a href="https://lean-lang.org/functional_programming_in_lean/" target="_blank" rel="noreferrer">
+            Functional Programming in Lean
+          </a>{' '}
+          is the best introduction.
+        </p>
       </header>
 
       <section className="matrix" aria-labelledby="matrix-title">
         <h2 id="matrix-title" className="visually-hidden">All 23 patterns</h2>
-        <div className="matrix-legend">
+        <div className="matrix-legend" role="group" aria-label="Show only patterns with this verdict">
           {verdicts.map((v) => (
-            <p key={v} className="legend-item">
+            <button
+              key={v}
+              type="button"
+              className="legend-item"
+              aria-pressed={only === v}
+              onClick={() => setOnly(only === v ? null : v)}
+            >
               <VerdictDot verdict={v} />
               <span>
                 <strong>{verdictLabel[v]}</strong>{' '}
@@ -31,15 +51,32 @@ export function Home() {
                 <br />
                 <span className="legend-blurb">{verdictBlurb[v]}</span>
               </span>
-            </p>
+            </button>
           ))}
         </div>
+        <p className="matrix-filter-note" role="status" aria-live="polite">
+          {only ? (
+            <>
+              Showing {shown.length} of {patterns.length} patterns.{' '}
+              <button type="button" onClick={() => setOnly(null)}>
+                Show all
+              </button>
+            </>
+          ) : (
+            'Select a verdict to show only those patterns.'
+          )}
+        </p>
         <div className="matrix-grid">
           {categories.map((cat) => (
             <div key={cat} className="matrix-col">
-              <h3 className="matrix-cat">{cat}</h3>
+              <h3 className="matrix-cat" id={`cat-${cat.toLowerCase()}`}>
+                {cat}
+              </h3>
               <ol className="matrix-list">
-                {patterns
+                {shown.filter((p) => p.category === cat).length === 0 && (
+                  <li className="matrix-col-empty">None in this category.</li>
+                )}
+                {shown
                   .filter((p) => p.category === cat)
                   .map((p) => (
                     <li key={p.slug}>

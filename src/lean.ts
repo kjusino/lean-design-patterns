@@ -46,6 +46,27 @@ export function leanSections(fileName: string): Partial<Record<SectionName, stri
   return out
 }
 
+// The statement of a theorem: everything from `theorem name` up to `:=`,
+// i.e. what is proved, without how.
+export function theoremStatement(fileName: string, name: string): string | null {
+  const lines = leanSource(fileName).split('\n')
+  const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  const start = lines.findIndex((l) => new RegExp(`^\\s*theorem ${escaped}(\\s|$)`).test(l))
+  if (start < 0) return null
+  const taken: string[] = []
+  for (let i = start; i < lines.length; i++) {
+    const line = lines[i]
+    const cut = line.indexOf(':=')
+    if (cut >= 0) {
+      taken.push(line.slice(0, cut).trimEnd())
+      break
+    }
+    taken.push(line)
+  }
+  const indent = Math.min(...taken.filter((l) => l.trim()).map((l) => l.match(/^\s*/)![0].length))
+  return taken.map((l) => l.slice(indent)).join('\n').trimEnd()
+}
+
 export function lineCount(fileName: string): number {
   return leanSource(fileName).trimEnd().split('\n').length
 }

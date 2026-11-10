@@ -1,5 +1,5 @@
 import { patterns, patternBySlug } from '../data/patterns'
-import { leanSections, leanSource, lineCount } from '../lean'
+import { leanSections, leanSource, lineCount, theoremStatement } from '../lean'
 import { href } from '../router'
 import { Code } from '../components/Code'
 import { MetaChips, Turnstile, VerdictBadge } from '../components/Bits'
@@ -20,7 +20,10 @@ export function PatternPage({ slug }: { slug: string }) {
   return (
     <article className="pattern">
       <header className="pattern-head">
-        <p className="pattern-cat">{p.category} pattern</p>
+        <p className="pattern-cat">
+          <a href={href(`/#cat-${p.category.toLowerCase()}`)}>{p.category}</a> pattern,{' '}
+          {index + 1} of {patterns.length}
+        </p>
         <h1 className="pattern-title">{p.oopName}</h1>
         <p className="pattern-lean">
           In Lean: <strong>{p.leanForm}</strong>
@@ -67,23 +70,34 @@ export function PatternPage({ slug }: { slug: string }) {
           <p className="spec-note">
             {dissolves
               ? 'These facts hold by definition. That is the point: the problem the pattern solved does not exist here.'
-              : 'This is the part a person reviews. Everything else on this page is checked by Lean.'}
+              : 'This is the part a person reviews, so it comes before the code. If the spec says the right thing, Lean guarantees the implementation below does too.'}
           </p>
           <Code code={sections.Spec} label="Specification" />
         </section>
       )}
 
-      <section className="guarantees" aria-label="What the proof covers">
-        <div className="guarantee-col">
-          <h2>What Lean proves</h2>
-          <ul>
-            {p.proves.map((x) => (
-              <li key={x}>{x}</li>
-            ))}
-          </ul>
-        </div>
-        <div className="guarantee-col guarantee-limits">
+      <section className="guarantees" aria-labelledby="proves-title">
+        <h2 id="proves-title">What Lean proves</h2>
+        <ul className="proves">
+          {p.proves.map((g) => {
+            const statement = g.theorem ? theoremStatement(p.file, g.theorem) : null
+            return (
+              <li key={g.text}>
+                <p className="proves-text">{g.text}</p>
+                {statement ? (
+                  <Code code={statement} label={`Theorem ${g.theorem}`} />
+                ) : (
+                  <p className="proves-by-type">
+                    {dissolves ? 'Holds by definition.' : 'Enforced by a type definition, so no separate theorem is needed.'}
+                  </p>
+                )}
+              </li>
+            )
+          })}
+        </ul>
+        <div className="limits">
           <h2>What it does not cover</h2>
+          <p className="limits-note">A proof covers the model and the spec, not the whole production system.</p>
           <ul>
             {p.limits.map((x) => (
               <li key={x}>{x}</li>

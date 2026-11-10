@@ -20,6 +20,13 @@ export interface Source {
   url: string
 }
 
+// One plain-English guarantee, optionally tied to the theorem that proves it.
+// No theorem means the guarantee is enforced by a type definition instead.
+export interface Guarantee {
+  text: string
+  theorem?: string
+}
+
 export interface Pattern {
   slug: string
   oopName: string
@@ -31,7 +38,7 @@ export interface Pattern {
   caseText: string
   sources: Source[]
   oopSketch: string
-  proves: string[]
+  proves: Guarantee[]
   limits: string[]
   related: string[]
   file: string
@@ -63,10 +70,10 @@ class CheckedFactory extends ReadingFactory {
 }
 // ...but nothing stops anyone writing: new Int16Reading((short) v)`,
     proves: [
-      'Every Int16Reading in the program holds a value between −32768 and 32767. The bound is part of the type.',
-      'When the checked factory succeeds, the stored value equals the input exactly.',
-      'The checked factory fails if and only if the input is out of range.',
-      'Saturation leaves in-range values untouched.',
+      { text: 'Every Int16Reading in the program holds a value between −32768 and 32767. The bound is part of the type.' },
+      { text: 'When the checked factory succeeds, the stored value equals the input exactly.', theorem: 'ofInt?_preserves' },
+      { text: 'The checked factory fails if and only if the input is out of range.', theorem: 'ofInt?_none_iff' },
+      { text: 'Saturation leaves in-range values untouched.', theorem: 'saturate_in_range' },
     ],
     limits: [
       'It does not decide whether to fail or to saturate. That choice is engineering judgment, and both are shown.',
@@ -97,8 +104,8 @@ class GcpFactory implements CloudFactory { ... }
 
 Stack deploy(CloudFactory f, String app) { ... }`,
     proves: [
-      'Every stack built by deploy has its VM and bucket on the same cloud as its network.',
-      'This holds for every factory that type-checks. A factory without the consistency proofs is rejected by the compiler.',
+      { text: 'Every stack built by deploy has its VM and bucket on the same cloud as its network.', theorem: 'deploy_consistent' },
+      { text: 'This holds for every factory that type-checks. A factory without the consistency proofs is rejected by the compiler.' },
     ],
     limits: [
       'It checks family consistency only. It says nothing about quotas, IAM permissions or whether the cloud API call succeeds.',
@@ -123,8 +130,8 @@ Stack deploy(CloudFactory f, String app) { ... }`,
     // .idempotencyKey("order-8812")   <- easy to forget
     .build();   // runtime check, if anyone wrote one`,
     proves: [
-      'Any sequence of builder steps that never sets the idempotency key fails to build.',
-      'Every PaymentRequest that exists has a positive amount and a non-empty key, by its type.',
+      { text: 'Any sequence of builder steps that never sets the idempotency key fails to build.', theorem: 'no_key_no_request' },
+      { text: 'Every PaymentRequest that exists has a positive amount and a non-empty key, by its type.', theorem: 'built_has_key' },
     ],
     limits: [
       'It does not prove keys are unique per logical payment. That depends on how callers generate them.',
@@ -147,7 +154,7 @@ Stack deploy(CloudFactory f, String app) { ... }`,
 staging.limits.maxConnections = 10;
 // shallow clone: base.limits was shared, so base changed too`,
     proves: [
-      'The examples hold by definition (rfl). There is nothing left to prove, which is why the pattern disappears.',
+      { text: 'The examples hold by definition (rfl). There is nothing left to prove, which is why the pattern disappears.' },
     ],
     limits: [
       'Copying is semantic, not physical. Lean may share memory under the hood, which is safe because nothing can mutate it.',
@@ -175,7 +182,7 @@ staging.limits.maxConnections = 10;
 }
 // any code anywhere can call AppConfig.get()`,
     proves: [
-      'Behavior depends only on the config you pass in. It holds by definition: no hidden global can change it.',
+      { text: 'Behavior depends only on the config you pass in. It holds by definition: no hidden global can change it.' },
     ],
     limits: [
       'Real connection pools are effectful resources. They live in the program’s outer IO layer, not in the pure core shown here.',
@@ -204,9 +211,9 @@ staging.limits.maxConnections = 10;
 }
 // but nav code still accepts any double`,
     proves: [
-      'Navigation functions only accept newton-seconds. Pound-force seconds are rejected by the compiler.',
-      'Converting each burn and then summing equals summing first and then converting, for any list of burns.',
-      'The adapter never maps two different readings to the same value.',
+      { text: 'Navigation functions only accept newton-seconds. Pound-force seconds are rejected by the compiler.' },
+      { text: 'Converting each burn and then summing equals summing first and then converting, for any list of burns.', theorem: 'adapter_respects_sum' },
+      { text: 'The adapter never maps two different readings to the same value.', theorem: 'toNewton_injective' },
     ],
     limits: [
       'The conversion factor is a definition you must review. A wrong constant would be proved “correct”.',
@@ -234,7 +241,7 @@ staging.limits.maxConnections = 10;
 class ErrorsOnly extends Pipeline { ... }
 class PrometheusExporter implements Exporter { ... }`,
     proves: [
-      'For any pipeline and any exporter, decoding what the backend received gives exactly the metrics the pipeline selected, in order.',
+      { text: 'For any pipeline and any exporter, decoding what the backend received gives exactly the metrics the pipeline selected, in order.', theorem: 'sendTo_faithful' },
     ],
     limits: [
       'Delivery over the network (batching, retries, drops) is not modeled.',
@@ -260,7 +267,7 @@ class Unit implements CostNode {
   long total() { return children.stream().mapToLong(CostNode::total).sum(); }
 }`,
     proves: [
-      'The one-pass rollup equals the sum of all leaf bills, for every possible tree.',
+      { text: 'The one-pass rollup equals the sum of all leaf bills, for every possible tree.', theorem: 'total_correct' },
     ],
     limits: [
       'It assumes the hierarchy is a tree. If an account could appear under two units, the model must change.',
@@ -289,9 +296,9 @@ class Unit implements CostNode {
   }
 }`,
     proves: [
-      'If the first attempt succeeds, the decorated call returns the same result after exactly one call.',
-      'A non-retryable error is returned immediately, after one call.',
-      'The decorated call never makes more than maxRetries + 1 calls.',
+      { text: 'If the first attempt succeeds, the decorated call returns the same result after exactly one call.', theorem: 'retry_transparent' },
+      { text: 'A non-retryable error is returned immediately, after one call.', theorem: 'retry_stops_on_bad_request' },
+      { text: 'The decorated call never makes more than maxRetries + 1 calls.', theorem: 'retry_bounded' },
     ],
     limits: [
       'Backoff timing and jitter are not modeled. They need a model of time.',
@@ -320,8 +327,8 @@ class Unit implements CostNode {
   }
 }`,
     proves: [
-      'Every quote has discount ≤ subtotal and total = subtotal − discount + tax.',
-      'A cart with an unknown SKU never produces a quote.',
+      { text: 'Every quote has discount ≤ subtotal and total = subtotal − discount + tax.', theorem: 'quote_wellFormed' },
+      { text: 'A cart with an unknown SKU never produces a quote.', theorem: 'unknown_sku_no_quote' },
     ],
     limits: [
       'The tax and discount rules are toy stand-ins. Real tax rules are their own verification project.',
@@ -347,9 +354,9 @@ class Unit implements CostNode {
   }
 }`,
     proves: [
-      'Any rate the table returns equals the rule engine’s rate.',
-      'Every postal code the table was built from is a hit.',
-      'Checkout always charges the rule engine’s rate, whether the table hits or misses.',
+      { text: 'Any rate the table returns equals the rule engine’s rate.', theorem: 'lookup_sound' },
+      { text: 'Every postal code the table was built from is a hit.', theorem: 'lookup_complete' },
+      { text: 'Checkout always charges the rule engine’s rate, whether the table hits or misses.', theorem: 'checkoutRate_correct' },
     ],
     limits: [
       'Rules are assumed fixed. When tax law changes, the table must be rebuilt, and staleness is out of scope.',
@@ -376,8 +383,8 @@ class Unit implements CostNode {
   }
 }`,
     proves: [
-      'Every entry in the cache always agrees with the backend.',
-      'Through the proxy, any stream of reads returns exactly what direct backend calls would.',
+      { text: 'Every entry in the cache always agrees with the backend.', theorem: 'getPrice_valid' },
+      { text: 'Through the proxy, any stream of reads returns exactly what direct backend calls would.', theorem: 'serveAll_correct' },
     ],
     limits: [
       'The backend is treated as unchanging. Cache invalidation is not modeled, and it is the hard part in real systems.',
@@ -406,8 +413,8 @@ class Unit implements CostNode {
 }
 class VelocityCheck extends RiskHandler { ... }`,
     proves: [
-      'The handler pipeline returns the same decision as the written decision table, for every transaction.',
-      'In any chain, a handler placed first that decides takes priority.',
+      { text: 'The handler pipeline returns the same decision as the written decision table, for every transaction.', theorem: 'pipeline_matches_table' },
+      { text: 'In any chain, a handler placed first that decides takes priority.', theorem: 'first_handler_wins' },
     ],
     limits: [
       'The decision table is the spec. If the thresholds are wrong for your business, the proof will not tell you.',
@@ -433,9 +440,9 @@ class RemoveServers implements Command {
   public void undo()    { fleet.add(n); }
 }`,
     proves: [
-      'A checked command never takes the fleet below its minimum capacity.',
-      'Replaying any log of commands keeps the fleet at or above the minimum.',
-      'Undoing an allowed command restores the fleet exactly.',
+      { text: 'A checked command never takes the fleet below its minimum capacity.', theorem: 'runChecked_safe' },
+      { text: 'Replaying any log of commands keeps the fleet at or above the minimum.', theorem: 'replay_safe' },
+      { text: 'Undoing an allowed command restores the fleet exactly.', theorem: 'undo_restores' },
     ],
     limits: [
       'One fleet with one minimum is modeled. The real incident involved several dependent subsystems.',
@@ -465,9 +472,9 @@ class And implements Cond {
 }
 class Optimizer { Cond simplify(Cond c) { ... } }   // trusted by hope`,
     proves: [
-      'Optimizing a condition never changes what it evaluates to, for every request.',
-      'Optimizing every policy never flips an authorization decision.',
-      'With no permit policies, every request is denied.',
+      { text: 'Optimizing a condition never changes what it evaluates to, for every request.', theorem: 'eval_optimize' },
+      { text: 'Optimizing every policy never flips an authorization decision.', theorem: 'authorize_optimize' },
+      { text: 'With no permit policies, every request is denied.', theorem: 'no_permit_denies' },
     ],
     limits: [
       'This is a small fragment of the language. The real Cedar specification covers far more.',
@@ -494,7 +501,7 @@ class Optimizer { Cond simplify(Cond c) { ... } }   // trusted by hope`,
   }
 }`,
     proves: [
-      'Following cursors returns exactly the remaining records, in order, with nothing skipped or repeated, given enough requests.',
+      { text: 'Following cursors returns exactly the remaining records, in order, with nothing skipped or repeated, given enough requests.', theorem: 'fetchAll_correct' },
     ],
     limits: [
       'The dataset is assumed not to change between requests. Inserts during pagination are out of scope.',
@@ -522,8 +529,8 @@ class Optimizer { Cond simplify(Cond c) { ... } }   // trusted by hope`,
   }
 }`,
     proves: [
-      'Every message keeps reserved + sold ≤ stock.',
-      'Any sequence of messages, in any order, keeps the guarantee.',
+      { text: 'Every message keeps reserved + sold ≤ stock.', theorem: 'reduce_noOversell' },
+      { text: 'Any sequence of messages, in any order, keeps the guarantee.', theorem: 'processAll_noOversell' },
     ],
     limits: [
       'A single reducer processes messages one at a time. Distributed inventory across regions needs a different model.',
@@ -548,7 +555,7 @@ class Optimizer { Cond simplify(Cond c) { ... } }   // trusted by hope`,
   void restore(Memento m) { doc = m.state(); }
 }`,
     proves: [
-      'Undo after edit returns exactly the previous editor. The proof is rfl: it holds by definition.',
+      { text: 'Undo after edit returns exactly the previous editor. The proof is rfl: it holds by definition.', theorem: 'undo_edit' },
     ],
     limits: [
       'Single-user undo only. Multi-user undo is a different problem.',
@@ -574,7 +581,7 @@ class Optimizer { Cond simplify(Cond c) { ... } }   // trusted by hope`,
   }
 }`,
     proves: [
-      'Each subscriber’s outbox holds exactly the events it wants, in the original order, each exactly once.',
+      { text: 'Each subscriber’s outbox holds exactly the events it wants, in the original order, each exactly once.', theorem: 'dispatch_correct' },
     ],
     limits: [
       'Network delivery, retries and acknowledgements are not modeled. Real webhook systems deliver at least once.',
@@ -601,9 +608,9 @@ class Paid implements OrderState {
   }
 }`,
     proves: [
-      'Every legal transition keeps refunded ≤ paid.',
-      'No sequence of events, of any length, can over-refund an order.',
-      'An order can only be shipped from the paid state.',
+      { text: 'Every legal transition keeps refunded ≤ paid.', theorem: 'step_moneyOk' },
+      { text: 'No sequence of events, of any length, can over-refund an order.', theorem: 'run_moneyOk' },
+      { text: 'An order can only be shipped from the paid state.', theorem: 'ship_requires_paid' },
     ],
     limits: [
       'Illegal events are ignored here. A real system should log or reject them visibly.',
@@ -628,9 +635,10 @@ class MergeSort implements SortStrategy { ... }
 
 List<Long> sortLedger(SortStrategy s, List<Long> ts) { return s.sort(ts); }`,
     proves: [
-      'Every SortStrategy returns a sorted list.',
-      'Every SortStrategy returns a permutation of its input: nothing added, dropped or duplicated.',
-      'Code using a strategy inherits both guarantees without knowing which strategy it got.',
+      { text: 'Insertion sort always returns a sorted list.', theorem: 'insertionSort_sorted' },
+      { text: 'Insertion sort always returns a rearrangement of its input: nothing added, dropped or duplicated.', theorem: 'insertionSort_perm' },
+      { text: 'Merge sort meets the same contract, using lemmas from Lean’s standard library.', theorem: 'mergeSortNat_sorted' },
+      { text: 'Code using any SortStrategy inherits both guarantees without knowing which strategy it got.', theorem: 'sortLedger_correct' },
     ],
     limits: [
       'Running time is not part of the spec. A correct but slow strategy satisfies it.',
@@ -655,7 +663,7 @@ List<Long> sortLedger(SortStrategy s, List<Long> ts) { return s.sort(ts); }`,
   final Report run() { ... }   // the template method
 }`,
     proves: [
-      'For any hooks, loaded + rejected = extracted. No record is silently lost.',
+      { text: 'For any hooks, loaded + rejected = extracted. No record is silently lost.', theorem: 'runJob_balanced' },
     ],
     limits: [
       'Whether a rejected record should have been accepted depends on the hook. That is the team’s spec, not the skeleton’s.',
@@ -680,8 +688,8 @@ List<Long> sortLedger(SortStrategy s, List<Long> ts) { return s.sort(ts); }`,
 }
 abstract class SqlExpr { abstract <R> R accept(SqlVisitor<R> v); }`,
     proves: [
-      'The column-collecting visitor equals the direct recursive pass on every expression.',
-      'The node-counting visitor equals the direct recursive pass on every expression.',
+      { text: 'The column-collecting visitor equals the direct recursive pass on every expression.', theorem: 'columnsVisitor_correct' },
+      { text: 'The node-counting visitor equals the direct recursive pass on every expression.', theorem: 'countVisitor_correct' },
     ],
     limits: [
       'Adding a node type means updating every pass. Lean’s exhaustiveness check makes that a compile error rather than a runtime surprise.',
